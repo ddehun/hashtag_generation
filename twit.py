@@ -41,13 +41,23 @@ class Twit():
             data.append({'raw_text':t['text'],'hashtags':t['hashtags'],'image':t['media']})
             pos = nt.pos_tag(nt.word_tokenize(t['text']))
             data[-1]['tokens'] = [i[0] for i in pos]
-            while 'https' in data[-1]['tokens']: #rejoin the url
+
+            while 'https' in data[-1]['tokens']: #rejoin the tokenized url
                 idx = data[-1]['tokens'].index('https')
                 data[-1]['tokens'][idx] = data[-1]['tokens'][idx] + data[-1]['tokens'][idx+1] + data[-1]['tokens'][idx+2]
                 data[-1]['tokens'] = data[-1]['tokens'][:idx+1] + data[-1]['tokens'][idx+3:]
         return data
 
     def build_voca(self):
+        '''
+        단어 저장, idx 부여, 나중에 embedding한거도 여기에 해야하나?
+        '''
+
+        # TODO
+        # 1. dialog.py 와 비슷한 기능을 하는 Twit 클래스 완성
+        # 2. 이에 맞게 train.py model_.py 수정
+        #.3. chat.py는 필요할까??? 저건 그냥 실시간으로 테스트하려고 model.predict()를 이용해 만들어 둔 클래스같다.
+        #    저거랑 동일한 기능을 하는 클래스를 찾아서 하는게 어떨까?
         pass
 
 

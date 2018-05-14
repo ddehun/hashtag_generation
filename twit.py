@@ -8,6 +8,7 @@ import requests
 from io import BytesIO
 import nltk as nt
 from config import FLAGS
+from collections import Counter
 
 
 MY_KEY = '91084af0198be3d0b93ea1d15cb7f989'
@@ -26,8 +27,15 @@ class Twit():
     MAIN_KEY = ['hashtags','text','hashtags']
     def __init__(self):
         self.data_path = FLAGS.twit_path
-        self.twits = self.load_data()
+        self.twits = self.load_data() # 80,10,10 for train,dev,test
         self.voca = self.build_voca()
+
+        self.UNK_KEY = len(self.voca.keys())    #단어장에 없는 단어
+        self.BEG_KEY = len(self.voca.keys())+1  #ENCODING 시작
+        self.EOS_KEY = len(self.voca.keys())+2  #ENCODING 종료
+
+        start = self._idx_in_epoch = 0
+
 
     def load_data(self):
         """
@@ -52,12 +60,24 @@ class Twit():
         '''
         단어 저장, idx 부여, 나중에 embedding한거도 여기에 해야하나?
         '''
+        voca = Counter()
+        for d in self.twits:
+            for w in d['tokens']:
+                voca[w]+=1
+
+        pairs = sorted(voca.items(), key=lambda x: (-x[1],x[0]))
+        words, _ = list(zip(*pairs))
+        word_id = dict(zip(words, range(len(words))))
+        return word_id
 
         # TODO
         # 1. dialog.py 와 비슷한 기능을 하는 Twit 클래스 완성
         # 2. 이에 맞게 train.py model_.py 수정
         #.3. chat.py는 필요할까??? 저건 그냥 실시간으로 테스트하려고 model.predict()를 이용해 만들어 둔 클래스같다.
         #    저거랑 동일한 기능을 하는 클래스를 찾아서 하는게 어떨까?
+        pass
+
+    def next_batch(self, batch_size = 100):
         pass
 
 

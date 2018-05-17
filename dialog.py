@@ -3,6 +3,9 @@ import numpy as np
 import re
 from config import FLAGS
 
+'''
+따라했던 예제에 있던 파일. 대화 데이터를 전처리하는 클래스
+'''
 
 class Symbol():
     _EMP_ = '_EMP_'  # 빈칸
@@ -146,14 +149,11 @@ class Dialog():
                 ids = self.tokens_to_ids(tokens)
                 self.examples.append(ids)
 
-
     def tokenizer(self,sent):
         words = []
         _TOKEN_RE_ = re.compile("([.,!?\"':;)(])")
-
         for fragment in sent.strip().split():
             words.extend(_TOKEN_RE_.split(fragment))
-
         return [w for w in words if w]
 
     def build_vocab(self, data_path, vocab_path):
@@ -200,4 +200,19 @@ def main(_):
 
 
 if __name__ == "__main__":
-    tf.app.run()
+    #tf.app.run()
+    dialog = Dialog()
+    dialog.load_vocab(FLAGS.voc_path)
+    dialog.load_examples(FLAGS.data_path)
+
+    enc, dec, target = dialog.next_batch(10)
+    print(dec[0])
+    print(dec[0][0])
+    print(target)
+
+    print(target[0])
+    print(type(target[0][0]))
+
+    print(len(dec[0]))
+    print(len(target))
+    print(len(target[0]))

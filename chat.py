@@ -8,7 +8,9 @@ from config import FLAGS
 from model_ import Seq2Seq as Model
 from dialog import Dialog
 
-
+'''
+따라했던 예제에 있던 파일. 원래는 챗봇이였음
+'''
 class Chatbot:
     def __init__(self, voc_path, train_dir):
         self.dialog = Dialog()

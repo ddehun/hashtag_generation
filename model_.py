@@ -1,5 +1,9 @@
 import tensorflow as tf
+import numpy as np
 
+"""
+Seq2Seq LSTM 메인모델
+"""
 
 class Seq2Seq():
     logits = None

@@ -7,8 +7,9 @@ import numpy as np
 from config import FLAGS
 from model_ import Seq2Seq
 from twit import Twit
-
+import time
 def train(twit, batch_size=100, epoch=100):
+    print('훈련 시작~')
     model = Seq2Seq(twit.vocab_size)
 
     with tf.Session() as sess:
@@ -25,7 +26,11 @@ def train(twit, batch_size=100, epoch=100):
 
         total_batch = int(math.ceil(len(twit.twits) / float(batch_size))) #배치 개수
 
+        print("Real training start!")
+        print('{}번 해야 완료됨'.format(total_batch*epoch))
+        t=time.time()
         for step in range(total_batch * epoch):
+
             enc_input, dec_input, targets = twit.next_batch(batch_size,False)
             _, loss = model.train(sess, enc_input, dec_input, targets)
 
@@ -33,7 +38,9 @@ def train(twit, batch_size=100, epoch=100):
                 model.write_logs(sess, writer, enc_input, dec_input, targets)
 
                 print('Step:', '%06d' % model.global_step.eval(),
-                      'cost =', '{:.6f}'.format(loss))
+                      'cost =', '{:.6f}'.format(loss),
+                      'time  = {}min'.format(int(t-time.time())/60))
+                t=time.time()
         print('training epoch end')
         checkpoint_path = os.path.join(FLAGS.train_dir, FLAGS.ckpt_name)
         model.saver.save(sess, checkpoint_path, global_step=model.global_step)
@@ -53,12 +60,23 @@ def test(twit, batch_size=100):
 
         enc_input, dec_input, targets = twit.next_batch(batch_size,True)
 
-        expect, outputs, accuracy = model.test(sess, enc_input, dec_input, targets)
+        #DEC : beg, 단어
+        #taget : 단어, EOS
+
+        여기에 MAP metric 추가하기
+        expect, outputs, accuracy, top_k = model.test(sess, enc_input, dec_input, targets)
+        print('zz')
+        print('타겟',targets)
+        print(len(targets))
+        print('top10',top_k.indices[:,0,:].shape)
+        print(top_k.indices[:,0,:])
+        len(set(123))
 
         expect = twit.decode(expect)
 
         outputs = twit.decode(outputs)
 
+        #For human test of result
         for i in range(10):
             print('입력값 ',twit.test[i]['raw_text'])
             if '_PAD_' in expect[i]:
@@ -72,6 +90,7 @@ def test(twit, batch_size=100):
 
 
 def main(_):
+    print('시작~')
     twit = Twit()
     if FLAGS.train:
         print('model train start')

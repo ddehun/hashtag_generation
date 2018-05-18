@@ -25,7 +25,7 @@ class Twit():
     MAIN_KEY = ['hashtags','text','hashtags']
     def __init__(self):
         self.hashtag_max = 0
-        self.max_len_input = 0
+        #self.max_len_input = 0
 
         self.data_path = FLAGS.twit_path
         self.twits, self.test = self.load_data() # 80,10,10 for train,dev,test
@@ -49,39 +49,37 @@ class Twit():
             with open('data.pickle','rb') as f:
                 print("이미 존재하는 정형 트윗 데이터 이용")
                 data,tests = pickle.load(f)
-                for i in data:
-                    if len(i['hashtags'])>self.hashtag_max:
-                        self.hashtag_max = len(i['hashtags'])
-                    if len(i['tokens'])>self.max_len_input:
-                        self.max_len_input = len(i['tokens'])
+                # for i in data:
+                #     if len(i['hashtags'])>self.hashtag_max:
+                #         self.hashtag_max = len(i['hashtags'])
+                #     if len(i['tokens'])>self.max_len_input:
+                #         self.max_len_input = len(i['tokens'])
                 return data,tests
 
         with open(self.data_path,encoding='utf8') as f:
             raw_data = json.load(f)
         data = []
+        print("트위터 새로~")
         for i,t in enumerate(raw_data):
             t['text'] = t['text'].replace('#','').lower()
-            lowered_tag = []
-            for j in t['hashtags']:
-                lowered_tag.append(j.lower())
+            lowered_tag = [j.lower() for j in t['hashtags']]
+
             data.append({'raw_text':t['text'],'hashtags':lowered_tag,'image':t['media']})
             pos = nt.pos_tag(nt.word_tokenize(t['text']))
             data[-1]['tokens'] = [i[0] for i in pos]
 
+            inf_check = 0
             while 'https' in data[-1]['tokens']: #rejoin the tokenized url
+                inf_check+=1
+                if inf_check>10:
+                    print("Warning of Infinite loop")
+                    break
                 idx = data[-1]['tokens'].index('https')
                 data[-1]['tokens'][idx] = data[-1]['tokens'][idx] + data[-1]['tokens'][idx+1] + data[-1]['tokens'][idx+2]
                 data[-1]['tokens'] = data[-1]['tokens'][:idx+1] + data[-1]['tokens'][idx+3:]
 
         tests = data[0:len(data)//10]
-        #data = data[len(data)//10:]
-
-        for i in data:
-            if len(i['hashtags']) > self.hashtag_max:
-                print(i['hashtags'])
-                self.hashtag_max = len(i['hashtags'])
-            if len(i['tokens']) > self.max_len_input:
-                self.max_len_input = len(i['tokens'])
+        data = data[len(data)//10:]
 
         with open('data.pickle','wb') as f:
             pickle.dump((data,tests),f)
@@ -108,6 +106,7 @@ class Twit():
         self.BEG_KEY = word_id['_BEG_']  # ENCODING 시작
         self.EOS_KEY = word_id['_EOS_']  # ENCODING 종료
         self.PAD_KEY = word_id['_PAD_']  # PADDING
+        self.DEFINED = [self.UNK_KEY,self.BEG_KEY,self.EOS_KEY,self.PAD_KEY]
         return word_id
 
     def vec_generation(self):
@@ -124,28 +123,39 @@ class Twit():
         dec_input = []
         target = []
 
+        batch_set = []
+
         if not test:
-            if self._idx_in_epoch + batch_size < len(self.twits) -1:
-                self._idx_in_epoch = self._idx_in_epoch + batch_size
-            else:
-                self._idx_in_epoch = 0
-            batch_set = self.twits[start:start+batch_size]
+            while len(batch_set)<batch_size:
+                if self._idx_in_epoch == len(self.twits)-1:
+                    self._idx_in_epoch = 0
+                if self.curr_tag == len(self.twits[self._idx_in_epoch]['tag_vec']):
+                    self.curr_tag = 0
+                    self._idx_in_epoch += 1
 
-        else:
-            if self._idx_in_epoch + batch_size < len(self.test) -1:
-                self._idx_in_epoch = self._idx_in_epoch + batch_size
-            else:
-                self._idx_in_epoch = 0
-            batch_set = self.test[start:start+batch_size]
+                t=self.twits[self._idx_in_epoch].copy()
+                t['tag_vec'] = [t['tag_vec'][self.curr_tag]]
+                batch_set.append(t)
+                self.curr_tag+=1
 
-        self.hashtag_max = 0
+        batch_set = self.test
+
         max_len_input,self.hashtag_max = self._max_len(batch_set)
 
-        for t in batch_set:
-            a,b,c = self.transform(t['vec'],t['tag_vec'],max_len_input)
-            enc_input.append(a)
-            dec_input.append(b)
-            target.append(c)
+
+        if not test:
+            for t in batch_set:
+                for tag in t['tag_vec']:
+                    a,b,c = self.transform(t['vec'],[tag],max_len_input)
+                    enc_input.append(a)
+                    dec_input.append(b)
+                    target.append(c)
+        if test:
+            for t in batch_set:
+                a,b,c = self.transform(t['vec'],t['tag_vec'],max_len_input)
+                enc_input.append(a)
+                dec_input.append(b)
+                target.append(c)
 
         return enc_input, dec_input, target
 
@@ -165,8 +175,8 @@ class Twit():
 
     def transform(self,input,output,input_max):
         enc_input = input + [self.PAD_KEY]*max(0,input_max - len(input))
-        dec_input = [self.BEG_KEY] + output + [self.PAD_KEY]*max(0, self.hashtag_max- len(output))
-        target = output + [self.EOS_KEY] + [self.PAD_KEY]*max(0, self.hashtag_max - len(output))
+        dec_input = [self.BEG_KEY] + output + [self.PAD_KEY]*max(0, self.hashtag_max- len(output)-1)
+        target = output + [self.EOS_KEY] + [self.PAD_KEY]*max(0, self.hashtag_max - len(output)-1)
 
         enc_input = np.eye(self.vocab_size)[enc_input]
         dec_input = np.eye(self.vocab_size)[dec_input]
@@ -187,3 +197,8 @@ class Twit():
         tok = [[self.voca_list[i] for i in dec]for dec in indices]
 
         return tok
+
+if __name__ == '__main__':
+    t = Twit()
+    a=t.next_batch(test=True)
+    print(a[2])

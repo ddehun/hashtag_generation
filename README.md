@@ -14,7 +14,7 @@ LSTM Seq2Seq을 기본으로 한 해시태그 생성 모델
 - `model.py` : LSTM 모델
 - `train.py` : 모델의 훈련 및 테스트를 위한 스크립트
 - `Config.py` : hyperparameter를 조절하기 위한 파일
-` 'twit.py' : 트윗 데이터를 읽고 전처리하는 파일
+- `twit.py` : 트윗 데이터를 읽고 전처리하는 파일
 - `tagger.py` : 훈련된 모델을 통해 직접 해시태그 추천을 실행해볼 수 있는 파일
 - `model`,`logs` : 훈련된 모델 및 로그를 저장하는 폴더
 

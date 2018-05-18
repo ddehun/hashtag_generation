@@ -1,0 +1,7 @@
+*.iml
+*.pyc
+*.pickle
+*.json
+
+.idea/
+_pycache_/

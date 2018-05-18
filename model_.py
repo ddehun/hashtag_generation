@@ -43,6 +43,7 @@ class Seq2Seq():
         #softmax, cost, optimizer를 생성
         self.logits, self.cost, self.train_op = self._build_ops(outputs, self.targets)
         self.outputs = tf.argmax(self.logits, 2)
+        self.top_k = tf.nn.top_k(self.logits,5)
 
     def _cell(self, dropout_prob):
         cell = tf.nn.rnn_cell.BasicLSTMCell(self.n_hidden)
@@ -90,7 +91,7 @@ class Seq2Seq():
                                       self.targets: targets})
 
     def predict(self, session, enc_input, dec_input):
-        return session.run(self.outputs,
+        return session.run([self.top_k,self.outputs],
                            feed_dict={self.enc_input: enc_input,
                                       self.dec_input: dec_input})
 

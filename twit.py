@@ -33,6 +33,8 @@ class Twit():
         self.vocab_size = len(self.voca.keys())
 
         self.vec_generation() # 각 트윗의 tokens을 ids로 변환하여 저장(data embedding)
+
+        self.curr_tag = 0 # 1twit - 1tag matching을 위해, 현재 읽는 twit의 tag idx를 저장
         print('end')
 
 
@@ -58,7 +60,7 @@ class Twit():
             raw_data = json.load(f)
         data = []
         for i,t in enumerate(raw_data):
-            t['text'] = t['text'].lower()
+            t['text'] = t['text'].replace('#','').lower()
             lowered_tag = []
             for j in t['hashtags']:
                 lowered_tag.append(j.lower())
@@ -176,7 +178,6 @@ class Twit():
         String to vector
         '''
         ids = [self.voca[i] if i in self.voca else self.UNK_KEY for i in tokens]
-
         return ids
 
     def decode(self,indices,string=False):

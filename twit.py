@@ -15,10 +15,11 @@ import os
 트윗 데이터 전처리 파일
 """
 
-MY_KEY = '91084af0198be3d0b93ea1d15cb7f989'
+#카카오 API : Not yet image tag used...
+#MY_KEY = '91084af0198be3d0b93ea1d15cb7f989'
 
-def key_generation(image_url):
-    headers = {'Authorization':'KakaoAK {}'.format(MY_KEY)}
+#def key_generation(image_url):
+#    headers = {'Authorization':'KakaoAK {}'.format(MY_KEY)}
 
 
 class Twit():

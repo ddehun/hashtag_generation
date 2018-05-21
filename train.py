@@ -3,11 +3,13 @@ import random
 import math
 import os
 import numpy as np
-
+from evaluation import mAP
 from config import FLAGS
 from model_ import Seq2Seq
 from twit import Twit
 import time
+
+
 def train(twit, batch_size=100, epoch=100):
     print('훈련 시작~')
     model = Seq2Seq(twit.vocab_size)
@@ -29,17 +31,21 @@ def train(twit, batch_size=100, epoch=100):
         print("Real training start!")
         print('{}번 해야 완료됨'.format(total_batch*epoch))
         t=time.time()
-        for step in range(total_batch * epoch):
+        time_store = []
 
+        for step in range(total_batch * epoch):
             enc_input, dec_input, targets = twit.next_batch(batch_size,False)
             _, loss = model.train(sess, enc_input, dec_input, targets)
 
             if (step + 1) % 10 == 0:
                 model.write_logs(sess, writer, enc_input, dec_input, targets)
+                time_store.append(round((time.time()-t)/60,2))
 
                 print('Step:', '%06d' % model.global_step.eval(),
                       'cost =', '{:.6f}'.format(loss),
-                      'time  = {}min'.format(int(t-time.time())/60))
+                      'time  = {}min'.format(round(int(time.time()-t)/60,2)),
+                      '남은 예상시간 : {}min'.format(round((total_batch*epoch-step)/10*(sum(time_store)/len(time_store)),2))
+                      )
                 t=time.time()
         print('training epoch end')
         checkpoint_path = os.path.join(FLAGS.train_dir, FLAGS.ckpt_name)
@@ -60,33 +66,35 @@ def test(twit, batch_size=100):
 
         enc_input, dec_input, targets = twit.next_batch(batch_size,True)
 
-        #DEC : beg, 단어
-        #taget : 단어, EOS
-
-        여기에 MAP metric 추가하기
         expect, outputs, accuracy, top_k = model.test(sess, enc_input, dec_input, targets)
-        print('zz')
-        print('타겟',targets)
-        print(len(targets))
-        print('top10',top_k.indices[:,0,:].shape)
-        print(top_k.indices[:,0,:])
-        len(set(123))
+        top_k = top_k.indices[:,0,:]
+        prec = mAP(targets,top_k,twit)
 
         expect = twit.decode(expect)
-
         outputs = twit.decode(outputs)
 
+        top_k_copy = top_k[:]
+        k = twit.decode(top_k_copy)
+
+        samples = random.sample(range(len(twit.test)), 50)
         #For human test of result
-        for i in range(10):
-            print('입력값 ',twit.test[i]['raw_text'])
-            if '_PAD_' in expect[i]:
-                ia = expect[i].index('_PAD_')
-                expect[i] = expect[i][:ia]
-            print('실제값 ', expect[i])
-            if '_PAD_' in outputs[i]:
-                ia = outputs[i].index('_PAD_')
-                outputs[i] = outputs[i][:ia]
-            print('예측값 ', outputs[i])
+        for i in samples:
+            print('\n\n입력값 ',twit.test[i]['raw_text'])
+            print('실제값 : ', end='')
+            for j in expect[i]:
+                if j in ['_UNK_', '_EOS_', '_PAD_']: continue
+                print(j, end=' ')
+            print('\n예측값 : ', end='')
+
+            cnt=0
+            for idx,j in enumerate(k[i]):
+                if j in ['_UNK_', '_EOS_', '_PAD_']: continue
+                if cnt==FLAGS.map_k:break
+                cnt+=1
+                print(j, end=' ')
+
+            print('정확도 : {}'.format(round(mAP([targets[i]],[top_k[i]],twit),2)))
+        print('\n\nmean Average Precision   : ',prec)
 
 
 def main(_):

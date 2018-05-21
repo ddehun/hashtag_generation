@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from config import FLAGS
 
 """
 Seq2Seq LSTM 메인모델
@@ -43,7 +44,7 @@ class Seq2Seq():
         #softmax, cost, optimizer를 생성
         self.logits, self.cost, self.train_op = self._build_ops(outputs, self.targets)
         self.outputs = tf.argmax(self.logits, 2)
-        self.top_k = tf.nn.top_k(self.logits,10)
+        self.top_k = tf.nn.top_k(self.logits,FLAGS.recommend_count)
 
     def _cell(self, dropout_prob):
         cell = tf.nn.rnn_cell.BasicLSTMCell(self.n_hidden)

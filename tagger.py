@@ -9,8 +9,7 @@ from twit import Twit
 import nltk as nt
 
 '''
-훈련한 모델을 통해 해시태그 생성을 직접 해볼 수 있는 파일 (Not completly developed yet)
-참고한 예제파일의 chat.py와 비슷한 파일
+훈련한 모델을 통해 해시태그 생성을 직접 해볼 수 있는 파일
 '''
 
 class Tagger():
@@ -31,7 +30,10 @@ class Tagger():
         line = sys.stdin.readline()
 
         while line:
-            print(self.recommend({'text':line.strip()}))
+            tags = self.recommend({'text':line.strip()})
+            for i in tags:
+                print('#'+i,end=' ')
+            print('\n')
             sys.stdout.write('\n> ')
             sys.stdout.flush()
             line = sys.stdin.readline()
@@ -55,16 +57,8 @@ class Tagger():
                 if candi not in [self.twit.EOS_KEY,self.twit.PAD_KEY,self.twit.UNK_KEY]:
                     candis.append(self.twit.voca_list[candi])
                     final_recommend.append(candi)
-
-
-            # if outputs[0][curr_seq]==self.twit.EOS_KEY:
-            #     break
-            # elif outputs[0][curr_seq] not in [self.twit.EOS_KEY,self.twit.PAD_KEY,self.twit.UNK_KEY]:
-            #     dec_input.append(outputs[0][curr_seq])
-            #     curr_seq+=1
-
+        final_recommend = final_recommend[:FLAGS.map_k]
         reply = self.twit.decode([final_recommend],True)
-        #reply = self.twit.decode([dec_input], True)
         return reply[0]
 
     def _decode(self,enc_input,dec_input):

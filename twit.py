@@ -10,6 +10,7 @@ from config import FLAGS
 from collections import Counter
 import pickle
 import os
+import random
 
 """
 트윗 데이터 전처리 파일
@@ -21,24 +22,17 @@ import os
 #def key_generation(image_url):
 #    headers = {'Authorization':'KakaoAK {}'.format(MY_KEY)}
 
-
 class Twit():
     MAIN_KEY = ['hashtags','text','hashtags']
     def __init__(self):
         self.hashtag_max = 0
-        #self.max_len_input = 0
-
         self.data_path = FLAGS.twit_path
         self.twits, self.test = self.load_data() # 80,10,10 for train,dev,test
         self.voca = self.build_voca()
         self.vocab_size = len(self.voca.keys())
 
         self.vec_generation() # 각 트윗의 tokens을 ids로 변환하여 저장(data embedding)
-
         self.curr_tag = 0 # 1twit - 1tag matching을 위해, 현재 읽는 twit의 tag idx를 저장
-        print('end')
-
-
         self._idx_in_epoch = 0
 
     def load_data(self):
@@ -62,6 +56,7 @@ class Twit():
         data = []
         print("트위터 새로~")
         for i,t in enumerate(raw_data):
+            if len(t['hashtags'])==0:continue
             t['text'] = t['text'].replace('#','').lower()
             lowered_tag = [j.lower() for j in t['hashtags']]
 
@@ -79,8 +74,12 @@ class Twit():
                 data[-1]['tokens'][idx] = data[-1]['tokens'][idx] + data[-1]['tokens'][idx+1] + data[-1]['tokens'][idx+2]
                 data[-1]['tokens'] = data[-1]['tokens'][:idx+1] + data[-1]['tokens'][idx+3:]
 
+        #random.shuffle(data)
         tests = data[0:len(data)//10]
         data = data[len(data)//10:]
+        print('섞섞')
+        random.shuffle(data)
+        random.shuffle(tests)
 
         with open('data.pickle','wb') as f:
             pickle.dump((data,tests),f)
@@ -94,19 +93,22 @@ class Twit():
             for w in d['tokens']:
                 voca[w]+=1
 
+        #작게 나온 단어들은 단어장에서 제외
         pairs = sorted(voca.items(), key=lambda x: (-x[1],x[0]))
-        words, _ = list(zip(*pairs))
-        self.voca_list = list(words) + ['_UNK_','_BEG_','_EOS_','_PAD_']
-        word_id = dict(zip(words, range(len(words))))
-        word_id['_UNK_'] = len(words)
-        word_id['_BEG_'] = len(words)+1
-        word_id['_EOS_'] = len(words)+2
-        word_id['_PAD_'] = len(words)+3
+        for i,qwer in enumerate(pairs):
+            if qwer[1]== FLAGS.minimum_cnt:
+                break
+        pairs=pairs[:i-1]
 
-        self.UNK_KEY = word_id['_UNK_']  # 단어장에 없는 단어
-        self.BEG_KEY = word_id['_BEG_']  # ENCODING 시작
-        self.EOS_KEY = word_id['_EOS_']  # ENCODING 종료
-        self.PAD_KEY = word_id['_PAD_']  # PADDING
+        words, _ = list(zip(*pairs))
+        word_id = dict(zip(words, range(len(words))))
+
+        self.voca_list = list(words) + ['_UNK_', '_BEG_', '_EOS_', '_PAD_']
+        self.UNK_KEY = word_id['_UNK_'] = len(words)
+        self.BEG_KEY = word_id['_BEG_'] = len(words)+1
+        self.EOS_KEY = word_id['_EOS_'] = len(words)+2
+        self.PAD_KEY = word_id['_PAD_'] = len(words)+3
+
         self.DEFINED = [self.UNK_KEY,self.BEG_KEY,self.EOS_KEY,self.PAD_KEY]
         return word_id
 
@@ -133,16 +135,19 @@ class Twit():
                 if self.curr_tag == len(self.twits[self._idx_in_epoch]['tag_vec']):
                     self.curr_tag = 0
                     self._idx_in_epoch += 1
-
-                t=self.twits[self._idx_in_epoch].copy()
-                t['tag_vec'] = [t['tag_vec'][self.curr_tag]]
+                try:
+                    t=self.twits[self._idx_in_epoch].copy()
+                    t['tag_vec'] = [t['tag_vec'][self.curr_tag]]
+                except:
+                    self.curr_tag+=1
+                    print('배치 생성 에러')
+                    continue
                 batch_set.append(t)
                 self.curr_tag+=1
-
-        batch_set = self.test
+        if test:
+            batch_set = self.test
 
         max_len_input,self.hashtag_max = self._max_len(batch_set)
-
 
         if not test:
             for t in batch_set:
@@ -185,21 +190,27 @@ class Twit():
         return enc_input, dec_input, target
 
     def tokens_to_id(self,tokens):
-        '''
-        String to vector
-        '''
+        #String to vector
         ids = [self.voca[i] if i in self.voca else self.UNK_KEY for i in tokens]
         return ids
 
     def decode(self,indices,string=False):
-        '''
-        vector to string
-        '''
+        #vector to string
         tok = [[self.voca_list[i] for i in dec]for dec in indices]
 
         return tok
 
 if __name__ == '__main__':
     t = Twit()
-    a=t.next_batch(test=True)
-    print(a[2])
+    a,b,c = t.next_batch(test=True)
+    # for i in range(100):
+    #     print(t.test[i]['tag_vec'])
+    #     print(t.test[i]['hashtags'])
+    #     print()
+
+    cnt = 0
+    for i in t.twits:
+        if len(set(['vacation','summer'])&set(i['hashtags']))==0:
+           cnt+=1
+    print(len(t.twits))
+    print(cnt)

@@ -71,7 +71,6 @@ class Seq2Seq():
         cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=targets))
         train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(cost,global_step=self.global_step)
 
-        # for tensorboard visualization
         tf.summary.scalar('cost',cost)
 
         return logits, cost, train_op

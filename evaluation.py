@@ -7,9 +7,7 @@ from config import FLAGS
 
 def mAP(answer,top_n,twit):
     total_precision = 0
-
     assert len(answer)==len(top_n)
-
     for ans,top in zip(answer,top_n):
         ans, top = remove_predefined(list(ans),list(top),twit)
         top = top[:FLAGS.map_k]

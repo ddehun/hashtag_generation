@@ -44,11 +44,6 @@ class Twit():
             with open('data.pickle','rb') as f:
                 print("이미 존재하는 정형 트윗 데이터 이용")
                 data,tests = pickle.load(f)
-                # for i in data:
-                #     if len(i['hashtags'])>self.hashtag_max:
-                #         self.hashtag_max = len(i['hashtags'])
-                #     if len(i['tokens'])>self.max_len_input:
-                #         self.max_len_input = len(i['tokens'])
                 return data,tests
 
         with open(self.data_path,encoding='utf8') as f:
@@ -57,6 +52,7 @@ class Twit():
         print("트위터 새로~")
         for i,t in enumerate(raw_data):
             if len(t['hashtags'])==0:continue
+
             t['text'] = t['text'].replace('#','').lower()
             lowered_tag = [j.lower() for j in t['hashtags']]
 
@@ -74,9 +70,10 @@ class Twit():
                 data[-1]['tokens'][idx] = data[-1]['tokens'][idx] + data[-1]['tokens'][idx+1] + data[-1]['tokens'][idx+2]
                 data[-1]['tokens'] = data[-1]['tokens'][:idx+1] + data[-1]['tokens'][idx+3:]
 
-        #random.shuffle(data)
-        tests = data[0:len(data)//10]
+        random.shuffle(data)
+        tests = data[:len(data)//10]
         data = data[len(data)//10:]
+        print('훈련 {}개, 테스트 {}개'.format(len(data),len(tests)))
         print('섞섞')
         random.shuffle(data)
         random.shuffle(tests)
@@ -96,8 +93,7 @@ class Twit():
         #작게 나온 단어들은 단어장에서 제외
         pairs = sorted(voca.items(), key=lambda x: (-x[1],x[0]))
         for i,qwer in enumerate(pairs):
-            if qwer[1]== FLAGS.minimum_cnt:
-                break
+            if qwer[1]== FLAGS.minimum_cnt: break
         pairs=pairs[:i-1]
 
         words, _ = list(zip(*pairs))
@@ -132,6 +128,7 @@ class Twit():
             while len(batch_set)<batch_size:
                 if self._idx_in_epoch == len(self.twits)-1:
                     self._idx_in_epoch = 0
+                    self.curr_tag = 0
                 if self.curr_tag == len(self.twits[self._idx_in_epoch]['tag_vec']):
                     self.curr_tag = 0
                     self._idx_in_epoch += 1
@@ -197,20 +194,8 @@ class Twit():
     def decode(self,indices,string=False):
         #vector to string
         tok = [[self.voca_list[i] for i in dec]for dec in indices]
-
         return tok
 
 if __name__ == '__main__':
     t = Twit()
-    a,b,c = t.next_batch(test=True)
-    # for i in range(100):
-    #     print(t.test[i]['tag_vec'])
-    #     print(t.test[i]['hashtags'])
-    #     print()
-
-    cnt = 0
-    for i in t.twits:
-        if len(set(['vacation','summer'])&set(i['hashtags']))==0:
-           cnt+=1
-    print(len(t.twits))
-    print(cnt)
+    print(len(t.voca_list))

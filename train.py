@@ -39,7 +39,7 @@ def train(twit, batch_size=100, epoch=100):
 
             if (step + 1) % 10 == 0:
                 model.write_logs(sess, writer, enc_input, dec_input, targets)
-                time_store.append(round((time.time()-t)/60,2))
+                time_store.append((time.time()-t)/60)
 
                 print('Step:', '%06d' % model.global_step.eval(),
                       'cost =', '{:.6f}'.format(loss),
@@ -91,7 +91,7 @@ def test(twit, batch_size=100):
                 if j in ['_UNK_', '_EOS_', '_PAD_']: continue
                 if cnt==FLAGS.map_k:break
                 cnt+=1
-                print(j, end=' ')
+                print('#'+j, end=' ')
 
             print('정확도 : {}'.format(round(mAP([targets[i]],[top_k[i]],twit),2)))
         print('\n\nmean Average Precision   : ',prec)

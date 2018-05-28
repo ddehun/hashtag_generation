@@ -11,7 +11,7 @@ from collections import Counter
 import pickle
 import os
 import random
-
+import re
 """
 트윗 데이터 전처리 파일
 """
@@ -51,28 +51,22 @@ class Twit():
         data = []
         print("트위터 새로~")
         for i,t in enumerate(raw_data):
-            if len(t['hashtags'])==0:continue
-
-            t['text'] = t['text'].replace('#','').lower()
+            t['text'],tmp_url=self.extract_url(t['text'].lower())
+            t['text'] = re.sub(r'[^\w]',' ',t['text']).lower()
             lowered_tag = [j.lower() for j in t['hashtags']]
+            if len(lowered_tag)==0: continue
 
             data.append({'raw_text':t['text'],'hashtags':lowered_tag,'image':t['media']})
             pos = nt.pos_tag(nt.word_tokenize(t['text']))
-            data[-1]['tokens'] = [i[0] for i in pos]
 
-            inf_check = 0
-            while 'https' in data[-1]['tokens']: #rejoin the tokenized url
-                inf_check+=1
-                if inf_check>10:
-                    print("Warning of Infinite loop")
-                    break
-                idx = data[-1]['tokens'].index('https')
-                data[-1]['tokens'][idx] = data[-1]['tokens'][idx] + data[-1]['tokens'][idx+1] + data[-1]['tokens'][idx+2]
-                data[-1]['tokens'] = data[-1]['tokens'][:idx+1] + data[-1]['tokens'][idx+3:]
+            data[-1]['tokens'] = [_pos[0] for _pos in pos]
+            data[-1]['tokens'] += tmp_url
+            for tok in tmp_url: data[-1]['raw_text'] += ' '+tok
 
-        random.shuffle(data)
-        tests = data[:len(data)//10]
-        data = data[len(data)//10:]
+        for i in range(10):
+            print(data[i]['tokens'])
+        tests = data[int(len(data)*9/10):]
+        data = data[:int(len(data)*9/10)]
         print('훈련 {}개, 테스트 {}개'.format(len(data),len(tests)))
         print('섞섞')
         random.shuffle(data)
@@ -81,6 +75,18 @@ class Twit():
         with open('data.pickle','wb') as f:
             pickle.dump((data,tests),f)
         return data,tests
+
+    def extract_url(self,strs):
+        url = []
+        text = ''
+        for i,tok in enumerate(strs.split()):
+            if 'https' in tok:
+                url.append(tok)
+            else:
+                text += ' '+tok
+        if text[:3] ==' rt': #retweet mark remove
+            text = ' '.join(text.strip().split()[2:])
+        return text.strip(), url
 
     def build_voca(self):
         # TODO
@@ -111,9 +117,11 @@ class Twit():
     def vec_generation(self):
         for idx,t in enumerate(self.twits):
             self.twits[idx]['vec'] = self.tokens_to_id(t['tokens'])
+            self.twits[idx]['vec'].reverse()
             self.twits[idx]['tag_vec'] = self.tokens_to_id(t['hashtags'])
         for idx,t in enumerate(self.test):
             self.test[idx]['vec'] = self.tokens_to_id(t['tokens'])
+            self.test[idx]['vec'].reverse()
             self.test[idx]['tag_vec'] = self.tokens_to_id(t['hashtags'])
 
     def next_batch(self, batch_size = 100, test=False):
@@ -132,13 +140,10 @@ class Twit():
                 if self.curr_tag == len(self.twits[self._idx_in_epoch]['tag_vec']):
                     self.curr_tag = 0
                     self._idx_in_epoch += 1
-                try:
-                    t=self.twits[self._idx_in_epoch].copy()
-                    t['tag_vec'] = [t['tag_vec'][self.curr_tag]]
-                except:
-                    self.curr_tag+=1
-                    print('배치 생성 에러')
-                    continue
+
+                t=self.twits[self._idx_in_epoch].copy()
+                t['tag_vec'] = [t['tag_vec'][self.curr_tag]]
+
                 batch_set.append(t)
                 self.curr_tag+=1
         if test:
@@ -199,3 +204,5 @@ class Twit():
 if __name__ == '__main__':
     t = Twit()
     print(len(t.voca_list))
+    for i in t.twits:
+        print(i)

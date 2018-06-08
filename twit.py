@@ -16,12 +16,6 @@ import re
 트윗 데이터 전처리 파일
 """
 
-#카카오 API : Not yet image tag used...
-#MY_KEY = '91084af0198be3d0b93ea1d15cb7f989'
-
-#def key_generation(image_url):
-#    headers = {'Authorization':'KakaoAK {}'.format(MY_KEY)}
-
 class Twit():
     MAIN_KEY = ['hashtags','text','hashtags']
     def __init__(self):
@@ -30,7 +24,7 @@ class Twit():
         self.twits, self.test = self.load_data() # 80,10,10 for train,dev,test
         self.voca = self.build_voca()
         self.vocab_size = len(self.voca.keys())
-
+        self.ImgTag_data()
         self.vec_generation() # 각 트윗의 tokens을 ids로 변환하여 저장(data embedding)
         self.curr_tag = 0 # 1twit - 1tag matching을 위해, 현재 읽는 twit의 tag idx를 저장
         self._idx_in_epoch = 0
@@ -54,13 +48,12 @@ class Twit():
             t['text'],tmp_url=self.extract_url(t['text'].lower())
             t['text'] = re.sub(r'[^\w]',' ',t['text']).lower()
             lowered_tag = [j.lower() for j in t['hashtags']]
-            if len(lowered_tag)==0: continue
+            if len(lowered_tag)==0 : continue
 
             data.append({'raw_text':t['text'],'hashtags':lowered_tag,'image':t['media']})
             pos = nt.pos_tag(nt.word_tokenize(t['text']))
 
-            data[-1]['tokens'] = [_pos[0] for _pos in pos]
-            data[-1]['tokens'] += tmp_url
+            data[-1]['tokens'] = [_pos[0] for _pos in pos] + tmp_url
             for tok in tmp_url: data[-1]['raw_text'] += ' '+tok
 
         for i in range(10):
@@ -75,6 +68,29 @@ class Twit():
         with open('data.pickle','wb') as f:
             pickle.dump((data,tests),f)
         return data,tests
+
+    def ImgTag_data(self):
+        '''
+        # TODO
+        Trash code!!! (duplicated with ''load_data()'' function).
+        Someday, merge this with load_data() with image tag management.
+        '''
+        with open(FLAGS.twit_img_path,encoding='utf8') as f:
+            raw_data = json.load(f)
+        data = []
+        for i,t in enumerate(raw_data):
+            t['text'], tmp_url = self.extract_url(t['text'].lower())
+            t['text'] = re.sub(r'[^\w]', ' ', t['text']).lower()
+            lowered_tag = [j.lower() for j in t['hashtags']]
+            if len(lowered_tag) == 0: continue
+
+            data.append({'raw_text': t['text'], 'hashtags': lowered_tag, 'image': t['media'],'image_tag':t['mediaTags']})
+            pos = nt.pos_tag(nt.word_tokenize(t['text']))
+
+            data[-1]['tokens'] = [_pos[0] for _pos in pos] + tmp_url + t['mediaTags']
+            for tok in tmp_url: data[-1]['raw_text'] += ' ' + tok
+        self.test = data[int(len(data)*9/10):]
+        self.twits = data[:int(len(data)*9/10)]
 
     def extract_url(self,strs):
         url = []

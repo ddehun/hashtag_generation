@@ -8,10 +8,14 @@ from config import FLAGS
 def mAP(answer,top_n,twit):
     total_precision = 0
     assert len(answer)==len(top_n)
+    pass_cnt = 0
     for ans,top in zip(answer,top_n):
         ans, top = remove_predefined(list(ans),list(top),twit)
         top = top[:FLAGS.map_k]
-
+        if len(ans)==0:
+            pass_cnt += 1
+            print('answer zero problem')
+            continue
         hit, precision_sum = 0, 0
         for i in range(len(top)):
             if top[i] in ans:
@@ -20,7 +24,7 @@ def mAP(answer,top_n,twit):
             if hit == len(ans): break
         total_precision += precision_sum/len(ans)#  FLAGS.map_k
 
-    return total_precision/len(top_n)
+    return total_precision/(len(top_n)-pass_cnt)
 
 
 def remove_predefined(ans,top,twit):

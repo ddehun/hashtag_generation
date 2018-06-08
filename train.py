@@ -79,7 +79,7 @@ def test(twit, batch_size=100):
         samples = random.sample(range(len(twit.test)), 50)
         #For human test of result
         for i in samples:
-            print('\n\n입력값 ',twit.test[i]['raw_text'])
+            print('\n\n입력값 ',twit.test[i]['tokens'])
             print('실제값 : ', end='')
             for j in expect[i]:
                 if j in ['_UNK_', '_EOS_', '_PAD_']: continue
